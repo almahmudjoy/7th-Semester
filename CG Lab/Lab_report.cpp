@@ -1,0 +1,197 @@
+#include <graphics.h>
+#include <bits/stdc++.h>
+#include <conio.h>
+#include <windows.h>
+using namespace std;
+
+void drawCirclePoints(int xc, int yc, int x, int y)
+{
+    putpixel(xc + x, yc + y, WHITE);
+    putpixel(xc - x, yc + y, WHITE);
+    putpixel(xc + x, yc - y, WHITE);
+    putpixel(xc - x, yc - y, WHITE);
+    putpixel(xc + y, yc + x, WHITE);
+    putpixel(xc - y, yc + x, WHITE);
+    putpixel(xc + y, yc - x, WHITE);
+    putpixel(xc - y, yc - x, WHITE);
+}
+
+void trigonometic()
+{
+    int xMax = getmaxx();
+    int yMax = getmaxy();
+    int xCenter = xMax / 2;
+    int yCenter = yMax / 2;
+
+
+    line(0, yCenter, xMax, yCenter);
+    line(xCenter, 0, xCenter, yMax);
+    int xc, yc, r;
+    cout << "Enter center (x y): ";
+    cin >> xc >> yc;
+    cout << "Enter radius: ";
+    cin >> r;
+
+    float angle = 0;
+    float step = 0.01;
+    while(angle<= 2*(3.1416))
+    {
+
+        int x = round(r*cos(angle));
+        int y = round(r*sin(angle));
+        putpixel(xCenter+xc + x,yCenter -yc -y, WHITE);
+        cout << "(" << x << ", " << y << ")" << endl;
+        angle+=step;
+    }
+}
+
+void direct_equation()
+{
+    int xMax = getmaxx();
+    int yMax = getmaxy();
+    int xCenter = xMax / 2;
+    int yCenter = yMax / 2;
+
+    // Draw axes
+    line(0, yCenter, xMax, yCenter); // X-axis
+    line(xCenter, 0, xCenter, yMax); // Y-axis
+
+
+    int xc, yc, r;
+    cout << "Enter center (x y): ";
+    cin >> xc >> yc;
+    cout << "Enter radius: ";
+    cin >> r;
+
+
+    for (int x = 0; x <= r / sqrt(2); x++)
+    {
+        int y = round(sqrt(r * r - x * x));
+        drawCirclePoints(xCenter + xc, yCenter - yc, x, y);
+        cout << "(" << x << ", " << y << ")" << endl;
+    }
+
+
+}
+
+void besenham()
+{
+    int xMax = getmaxx();
+    int yMax = getmaxy();
+    int xCenter = xMax / 2;
+    int yCenter = yMax / 2;
+
+    // Draw axes
+    line(0, yCenter, xMax, yCenter);
+    line(xCenter, 0, xCenter, yMax);
+
+    // User input
+    int xc, yc, r;
+    cout << "Enter center (x y): ";
+    cin >> xc >> yc;
+    cout << "Enter radius: ";
+    cin >> r;
+
+    int x = 0;
+    int y = r;
+    int d = 3 - 2 * r;
+
+    while (x <= y)
+    {
+        drawCirclePoints(xCenter + xc, yCenter - yc, x, y);
+        cout << "(" << x << ", " << y << ")" << endl;
+        if (d < 0)
+        {
+            d += 4 * x + 6;
+            x++;
+        }
+        else
+        {
+            y--;
+            x++;
+            d += 4 * (x - y) + 10;
+        }
+    }
+
+}
+
+void mid_point()
+{
+
+    int xMax = getmaxx();
+    int yMax = getmaxy();
+    int xCenter = xMax / 2;
+    int yCenter = yMax / 2;
+
+    // Draw axes
+    line(0, yCenter, xMax, yCenter); // X-axis
+    line(xCenter, 0, xCenter, yMax); // Y-axis
+
+    // User input
+    int xc, yc, r;
+    cout << "Enter center (x y): ";
+    cin >> xc >> yc;
+    cout << "Enter radius: ";
+    cin >> r;
+
+    // Midpoint circle algorithm
+    int x = 0;
+    int y = r;
+    float p = 1 - r;
+
+    while (x <= y)
+    {
+        drawCirclePoints(xCenter + xc, yCenter - yc, x, y); // Convert logical to screen
+        cout << "(" << x << ", " << y << ")" << endl;
+
+        x++;
+        if (p < 0)
+        {
+            p += 2 * x + 1;
+        }
+        else
+        {
+            y--;
+            p += 2 * (x - y) + 1;
+        }
+    }
+
+}
+
+int main()
+{
+    int gd = DETECT, gm;
+    initgraph(&gd, &gm, "");
+
+    int s;
+
+    cout<<"0. direct Equation "<<endl;
+    cout<<"1. trigonometic "<<endl;
+    cout<<"2. Besenham "<<endl;
+    cout<<"3. Mid Point "<<endl;
+    cout<<"enter a number from this: ";
+    cin>>s;
+
+    if(s==0)
+    {
+        direct_equation();
+    }
+    if(s==1)
+    {
+        trigonometic();
+    }
+    if(s==2)
+    {
+        besenham();
+    }
+    if(s==3)
+    {
+        mid_point();
+    }
+
+
+    getch();
+    closegraph();
+    return 0;
+}
+
