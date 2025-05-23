@@ -1,4 +1,3 @@
-// JetFight 3D - Ultimate Leader Jet Edition (C++98 Compatible)
 #include <GL/glut.h>
 #include <cmath>
 #include <cstdlib>
@@ -11,6 +10,7 @@
 void display();
 void update(int value);
 void keyboard(unsigned char key, int x, int y);
+void reshape(int w, int h); // New reshape function
 
 enum PowerUpType { HEALTH, SHIELD, RAPID_FIRE, SCORE_BOOST, MULTI_SHOT };
 
@@ -33,6 +33,13 @@ struct Jet {
     int shotCooldown;
 };
 
+// Tree struct for background (sparse, stylized trees)
+struct Tree {
+    float x, y;
+    float height;
+    float canopyWidth;
+};
+
 // Game state
 float shipX = 0.0f;
 std::vector<float> playerBulletsY;
@@ -52,6 +59,7 @@ int healthSpawnTimer = 0;
 std::vector<Jet> enemies;
 std::vector<PowerUp> powerups;
 std::vector<std::pair<float, float> > explosions;
+std::vector<Tree> trees; // Vector to store sparse trees
 
 void playSound(int frequency, int duration) {
     Beep(frequency, duration);
@@ -62,59 +70,71 @@ void drawJet(float x, float y, bool isEnemy, int type = 0) {
     glTranslatef(x, y, 0.0f);
     glScalef(0.06f, 0.06f, 1.0f);
 
+    // Base color for jet (metallic silver for all jets)
+    glColor3f(0.8f, 0.8f, 0.8f);
+
+    // Body (slightly elongated)
+    glBegin(GL_POLYGON);
+    glVertex2f(-1.0f, -2.5f);
+    glVertex2f(-1.0f, 2.5f);
+    glVertex2f(1.0f, 2.5f);
+    glVertex2f(1.0f, -2.5f);
+    glEnd();
+
+    // Nose (sharper, more angular)
+    glColor3f(0.6f, 0.6f, 0.6f); // Slightly darker for nose
+    glBegin(GL_TRIANGLES);
+    glVertex2f(-1.0f, 2.5f);
+    glVertex2f(0.0f, 4.5f);
+    glVertex2f(1.0f, 2.5f);
+    glEnd();
+
+    // Wings (sharper, more angular)
     if (isEnemy) {
         switch(type) {
-            case 1: glColor3f(1.0f, 0.1f, 0.1f); break; // Fast (red)
-            case 2: glColor3f(0.7f, 0.1f, 0.7f); break; // Tank (purple)
-            case 3: glColor3f(1.0f, 0.8f, 0.0f); break; // Leader (gold)
-            default: glColor3f(1.0f, 0.5f, 0.2f);       // Normal (orange)
+            case 1: glColor3f(1.0f, 0.3f, 0.3f); break; // Fast (red accents)
+            case 2: glColor3f(0.8f, 0.3f, 0.8f); break; // Tank (purple accents)
+            case 3: glColor3f(1.0f, 0.9f, 0.3f); break; // Leader (gold accents)
+            default: glColor3f(1.0f, 0.6f, 0.3f);       // Normal (orange accents)
         }
     } else {
-        glColor3f(0.2f, 0.6f, 1.0f); // Player (blue)
+        glColor3f(0.3f, 0.7f, 1.0f); // Player (blue accents)
     }
-
-    // Body
-    glBegin(GL_POLYGON);
-    glVertex2f(-1.0f, -2.0f);
-    glVertex2f(-1.0f, 2.0f);
-    glVertex2f(1.0f, 2.0f);
-    glVertex2f(1.0f, -2.0f);
-    glEnd();
-
-    // Nose
-    glBegin(GL_TRIANGLES);
-    glVertex2f(-1.0f, 2.0f);
-    glVertex2f(0.0f, 4.0f);
-    glVertex2f(1.0f, 2.0f);
-    glEnd();
-
-    // Wings
     glBegin(GL_TRIANGLES);
     glVertex2f(-1.0f, 0.0f);
-    glVertex2f(-3.0f, -1.0f);
-    glVertex2f(-1.0f, -2.0f);
+    glVertex2f(-3.5f, -1.5f);
+    glVertex2f(-1.0f, -2.5f);
     glVertex2f(1.0f, 0.0f);
-    glVertex2f(3.0f, -1.0f);
-    glVertex2f(1.0f, -2.0f);
+    glVertex2f(3.5f, -1.5f);
+    glVertex2f(1.0f, -2.5f);
     glEnd();
 
-    // Tail
+    // Tail (more pronounced)
+    glColor3f(0.6f, 0.6f, 0.6f); // Darker tail
     glBegin(GL_TRIANGLES);
-    glVertex2f(-0.5f, -2.0f);
-    glVertex2f(0.0f, -3.0f);
-    glVertex2f(0.5f, -2.0f);
+    glVertex2f(-0.7f, -2.5f);
+    glVertex2f(0.0f, -4.0f);
+    glVertex2f(0.7f, -2.5f);
     glEnd();
 
-    // Leader stripes
+    // Cockpit (small triangle on top of body)
+    glColor3f(0.2f, 0.2f, 0.2f); // Dark cockpit
+    glBegin(GL_TRIANGLES);
+    glVertex2f(-0.3f, 1.0f);
+    glVertex2f(0.3f, 1.0f);
+    glVertex2f(0.0f, 2.0f);
+    glEnd();
+
+    // Leader stripes (if applicable)
     if (type == 3) {
         glColor3f(0.1f, 0.1f, 0.1f);
         glBegin(GL_LINES);
-        glVertex2f(-2.5f, -1.5f); glVertex2f(-2.5f, 1.5f);
-        glVertex2f(2.5f, -1.5f); glVertex2f(2.5f, 1.5f);
+        glVertex2f(-3.0f, -1.5f); glVertex2f(-3.0f, 1.5f);
+        glVertex2f(3.0f, -1.5f); glVertex2f(3.0f, 1.5f);
         glEnd();
     }
 
-    // Health bars
+    // Health bars for tank/leader enemies
     if (isEnemy && (type == 2 || type == 3)) {
         float maxHealth = type == 2 ? 3.0f : 5.0f;
         glColor3f(1.0f, 0.0f, 0.0f);
@@ -143,7 +163,20 @@ void drawPowerUp(float x, float y, PowerUpType type) {
     glTranslatef(x, y, 0.0f);
 
     switch(type) {
-        case HEALTH: glColor3f(0.0f, 1.0f, 0.0f); break;
+        case HEALTH:
+            glColor3f(1.0f, 0.0f, 0.0f); // Red color
+            glBegin(GL_TRIANGLES);
+                glVertex2f(-0.03f, 0.0f);
+                glVertex2f(-0.015f, 0.04f);
+                glVertex2f(0.0f, 0.0f);
+                glVertex2f(0.0f, 0.0f);
+                glVertex2f(0.015f, 0.04f);
+                glVertex2f(0.03f, 0.0f);
+                glVertex2f(-0.03f, 0.0f);
+                glVertex2f(0.03f, 0.0f);
+                glVertex2f(0.0f, -0.05f);
+            glEnd();
+            break;
         case SHIELD: glColor3f(0.2f, 0.5f, 1.0f); break;
         case RAPID_FIRE: glColor3f(1.0f, 0.8f, 0.0f); break;
         case SCORE_BOOST: glColor3f(1.0f, 0.0f, 1.0f); break;
@@ -183,7 +216,7 @@ void drawShieldIndicator() {
 }
 
 void drawPowerUpStatus() {
-    glColor4f(0.2f, 0.2f, 0.2f, 0.7f);
+    glColor4f(0.2f, 0.2f, 0.7f, 0.7f);
     glBegin(GL_QUADS);
     glVertex2f(-0.98f, 0.85f); glVertex2f(-0.7f, 0.85f);
     glVertex2f(-0.7f, 0.95f); glVertex2f(-0.98f, 0.95f);
@@ -205,6 +238,59 @@ void drawPowerUpStatus() {
 
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
+
+    // Draw gradient sky (dark blue at top to lighter blue at bottom)
+    glBegin(GL_QUADS);
+    glColor3f(0.0f, 0.1f, 0.3f); // Dark blue at top
+    glVertex2f(-1.0f, 1.0f);
+    glVertex2f(1.0f, 1.0f);
+    glColor3f(0.2f, 0.4f, 0.7f); // Lighter blue at bottom
+    glVertex2f(1.0f, -1.0f);
+    glVertex2f(-1.0f, -1.0f);
+    glEnd();
+
+    // Draw sparse trees (stylized, distant)
+    for (size_t i = 0; i < trees.size(); ++i) {
+        glPushMatrix();
+        glTranslatef(trees[i].x, trees[i].y, 0.0f);
+        // Trunk (dark brown, thin)
+        glColor3f(0.4f, 0.2f, 0.1f);
+        glBegin(GL_QUADS);
+        glVertex2f(-0.01f, -trees[i].height);
+        glVertex2f(0.01f, -trees[i].height);
+        glVertex2f(0.01f, 0.0f);
+        glVertex2f(-0.01f, 0.0f);
+        glEnd();
+        // Canopy (dark green, small triangle)
+        glColor3f(0.0f, 0.3f, 0.0f);
+        glBegin(GL_TRIANGLES);
+        glVertex2f(-trees[i].canopyWidth, 0.0f);
+        glVertex2f(trees[i].canopyWidth, 0.0f);
+        glVertex2f(0.0f, trees[i].height * 0.5f);
+        glEnd();
+        glPopMatrix();
+    }
+
+    // Draw ground layer (subtle green strip with minimal foliage)
+    glColor3f(0.1f, 0.3f, 0.1f); // Dark green ground
+    glBegin(GL_QUADS);
+    glVertex2f(-1.0f, -1.0f);
+    glVertex2f(1.0f, -1.0f);
+    glVertex2f(1.0f, -0.9f);
+    glVertex2f(-1.0f, -0.9f);
+    glEnd();
+    // Minimal foliage on ground
+    glColor3f(0.0f, 0.4f, 0.0f);
+    for (float x = -1.0f; x < 1.0f; x += 0.3f) {
+        glBegin(GL_TRIANGLES);
+        glVertex2f(x - 0.05f, -0.9f);
+        glVertex2f(x + 0.05f, -0.9f);
+        glVertex2f(x, -0.85f);
+        glEnd();
+    }
+
+    // Reset color
+    glColor3f(1.0f, 1.0f, 1.0f);
 
     // Draw player
     drawJet(shipX, -0.8f, false);
@@ -254,6 +340,12 @@ void display() {
         for (size_t i = 0; i < scoreStr.size(); ++i) {
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, scoreStr[i]);
         }
+
+        glRasterPos2f(-0.15f, -0.2f);
+        std::string devMsg = "Developed by: Team-Shadow Nemesis";
+        for (size_t i = 0; i < devMsg.size(); ++i) {
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, devMsg[i]);
+        }
     }
 
     glutSwapBuffers();
@@ -267,7 +359,6 @@ void spawnEnemy() {
     e.firing = true;
     e.shotCooldown = 0;
 
-    // Random enemy type
     int typeRoll = rand() % 100;
     if (typeRoll < 60 - level * 5) {
         e.type = 0; e.health = 1; e.bulletPattern = 0; // Normal
@@ -279,17 +370,16 @@ void spawnEnemy() {
         e.type = 3; e.health = 5; e.bulletPattern = rand() % 3; // Leader
     }
 
-    // Initialize bullets
     switch(e.bulletPattern) {
-        case 0: // Single
+        case 0:
             e.bulletsY.push_back(e.y);
             e.bulletOffsets.push_back(0.0f);
             break;
-        case 1: // Double
+        case 1:
             e.bulletsY.push_back(e.y); e.bulletsY.push_back(e.y);
             e.bulletOffsets.push_back(-0.05f); e.bulletOffsets.push_back(0.05f);
             break;
-        case 2: // Triple
+        case 2:
             e.bulletsY.push_back(e.y); e.bulletsY.push_back(e.y); e.bulletsY.push_back(e.y);
             e.bulletOffsets.push_back(-0.1f); e.bulletOffsets.push_back(0.0f); e.bulletOffsets.push_back(0.1f);
             break;
@@ -299,7 +389,7 @@ void spawnEnemy() {
 }
 
 void spawnPowerUp(float x, float y) {
-    if (rand() % 100 < 15) { // 15% chance
+    if (rand() % 100 < 15) {
         PowerUp pu;
         pu.x = x;
         pu.y = y;
@@ -365,13 +455,11 @@ void update(int value) {
         return;
     }
 
-    // Update timers
     if (healthSpawnTimer > 0) healthSpawnTimer--;
     if (rapidFire > 0) rapidFire--;
     if (multiShot > 0) multiShot--;
     if (rapidFire <= 0 && scoreMultiplier > 1) scoreMultiplier = 1;
 
-    // Player bullets
     for (size_t i = 0; i < playerBulletsY.size(); ) {
         playerBulletsY[i] += bulletSpeed * (rapidFire > 0 ? 1.5f : 1.0f);
         if (playerBulletsY[i] > 1.0f) {
@@ -381,11 +469,9 @@ void update(int value) {
         }
     }
 
-    // Enemies
     for (size_t i = 0; i < enemies.size(); ++i) {
         if (!enemies[i].alive) continue;
 
-        // Movement
         switch(enemies[i].type) {
             case 0: enemies[i].y -= enemySpeed * (1.0f + level * 0.1f); break;
             case 1: enemies[i].y -= enemySpeed * (2.0f + level * 0.15f); break;
@@ -395,17 +481,14 @@ void update(int value) {
 
         if (enemies[i].y < -1.0f) enemies[i].alive = false;
 
-        // Leader behavior
         if (enemies[i].type == 3) {
             updateLeaderJet(enemies[i]);
         }
 
-        // Enemy bullets
         for (size_t j = 0; j < enemies[i].bulletsY.size(); ) {
             enemies[i].bulletsY[j] -= bulletSpeed * (1.0f + level * 0.1f);
             float offset = j < enemies[i].bulletOffsets.size() ? enemies[i].bulletOffsets[j] : 0.0f;
 
-            // Player hit
             if (fabs(enemies[i].bulletsY[j] + 0.8f) < 0.05f &&
                 fabs(enemies[i].x + offset - shipX) < 0.05f) {
                 if (shield > 0) {
@@ -434,7 +517,6 @@ void update(int value) {
             }
         }
 
-        // Check player bullets
         for (size_t j = 0; j < playerBulletsY.size(); ) {
             bool bulletHit = false;
             if (fabs(playerBulletsY[j] - enemies[i].y) < 0.1f &&
@@ -463,7 +545,6 @@ void update(int value) {
         }
     }
 
-    // Powerups
     for (size_t i = 0; i < powerups.size(); ) {
         if (!powerups[i].active) {
             i++;
@@ -507,7 +588,6 @@ void update(int value) {
         i++;
     }
 
-    // Cleanup
     std::vector<Jet> newEnemies;
     for (size_t i = 0; i < enemies.size(); ++i) {
         if (enemies[i].alive) newEnemies.push_back(enemies[i]);
@@ -524,14 +604,12 @@ void update(int value) {
         explosions.erase(explosions.begin());
     }
 
-    // Spawning
-    level = 1 + score / 500;
+    level = 1 + (score / 100);
     if (enemies.size() < (size_t)std::min(5 + level, 15) && rand() % 100 < 15) {
         spawnEnemy();
     }
     spawnHealthPack();
 
-    // Update title
     std::stringstream title;
     title << "JetFight 3D - Score: " << score << " | Lives: " << lives << " | Level: " << level;
     if (shield > 0) title << " | Shield: " << shield;
@@ -558,6 +636,15 @@ void keyboard(unsigned char key, int x, int y) {
         powerups.clear();
         explosions.clear();
         playerBulletsY.clear();
+        trees.clear();
+        for (int i = 0; i < 5; ++i) {
+            Tree t;
+            t.x = ((rand() % 200) - 100) / 100.0f; // -1.0 to 1.0
+            t.y = -0.9f + (rand() % 20) / 100.0f; // -0.9 to -0.7
+            t.height = 0.15f + (rand() % 5) / 100.0f; // 0.15 to 0.2
+            t.canopyWidth = 0.05f + (rand() % 3) / 100.0f; // 0.05 to 0.08
+            trees.push_back(t);
+        }
         playSound(600, 100);
     }
     if (key == 'a' && shipX > -0.9f) shipX -= 0.1f;
@@ -577,14 +664,55 @@ void keyboard(unsigned char key, int x, int y) {
     glutPostRedisplay();
 }
 
-void init() {
-    glClearColor(0.0, 0.0, 0.0, 1.0);
+void reshape(int w, int h) {
+    // Prevent division by zero
+    if (h == 0) h = 1;
+
+    // Set the viewport to the new window dimensions
+    glViewport(0, 0, w, h);
+
+    // Switch to projection matrix
     glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+
+    // Calculate the aspect ratio of the window
+    float aspect = (float)w / (float)h;
+    float worldWidth = 2.0f; // Logical world width (-1 to 1)
+    float worldHeight = 2.0f; // Logical world height (-1 to 1)
+
+    // Adjust the projection to maintain aspect ratio
+    if (aspect > 1.0f) {
+        // Window is wider than tall, scale width
+        gluOrtho2D(-worldWidth / 2.0f * aspect, worldWidth / 2.0f * aspect, -worldHeight / 2.0f, worldHeight / 2.0f);
+    } else {
+        // Window is taller than wide, scale height
+        gluOrtho2D(-worldWidth / 2.0f, worldWidth / 2.0f, -worldHeight / 2.0f / aspect, worldHeight / 2.0f / aspect);
+    }
+
+    // Switch back to modelview matrix
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+void init() {
+    glClearColor(0.0, 0.0, 0.1, 1.0);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
     gluOrtho2D(-1.0, 1.0, -1.0, 1.0);
+    glMatrixMode(GL_MODELVIEW);
     enemies.clear();
     powerups.clear();
     explosions.clear();
     playerBulletsY.clear();
+    trees.clear();
+    for (int i = 0; i < 5; ++i) {
+        Tree t;
+        t.x = ((rand() % 200) - 100) / 100.0f; // -1.0 to 1.0
+        t.y = -0.9f + (rand() % 20) / 100.0f; // -0.9 to -0.7
+        t.height = 0.15f + (rand() % 5) / 100.0f; // 0.15 to 0.2
+        t.canopyWidth = 0.05f + (rand() % 3) / 100.0f; // 0.05 to 0.08
+        trees.push_back(t);
+    }
     spawnEnemy();
     playSound(500, 100);
 }
@@ -597,6 +725,7 @@ int main(int argc, char** argv) {
     init();
     glutDisplayFunc(display);
     glutKeyboardFunc(keyboard);
+    glutReshapeFunc(reshape); // Register the reshape function
     glutTimerFunc(0, update, 0);
     glutMainLoop();
     return 0;
